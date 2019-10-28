@@ -15,7 +15,7 @@ AutoblockScriptSynology is a simple script to update ip blacklisted from the int
 ##### 0       *       *       *       *       root    /bin/sh /volume1/homes/myusername/Scripts/Blacklist/blacklist.sh
 
 ##### To choose the periodicity. Inquire here:
-##### [Crontab-Generator] (https://crontab-generator.org/)
+##### [Crontab-Generator](https://crontab-generator.org/)
 
 ### Special Thanks To :
 ##### - [NAS-FORUM](https://www.nas-forum.com)
