@@ -1,36 +1,37 @@
 #!/bin/sh
 
 ###############################################################################
-# Script du tutoriel de nas-forum.com par PPJP & Superthx
+###############################################################################
+# Script du tutoriel de nas-forum.com par PPJP + Superthx pour test
 ###############################################################################
 # Ce script accepte un paramètre:  "raz"
 # S'il est présent:
 # le script débute par la suppression des IP non bloquées définitivement
 ###############################################################################
-
-###################
 ### PARAMETRAGE ###
 ###################
-# Fréquence de lancement de ce script en heures (exemple 24 si journalier)
+# Indiquer la fréquence de lancement de ce script en heures
+#(exemples: 1 si chaque heure, 24 si journalier)
 Freq="1" 
 
-# adresses des sites source entre guillemets séparées par un espace
+# Adresses des sites source séparées par un espace
 Liste_Url="https://lists.blocklist.de/lists/ \
 https://mariushosting.com/wp-content/uploads/2018/07/deny-ip-list.txt"
 # Pour la liste de www.blocklist.de
-# Liste Choix: {all} {ssh} {mail} {apache} {imap} {ftp} {sip} {bots}
+# Liste de choix: {all} {ssh} {mail} {apache} {imap} {ftp} {sip} {bots}
 #              {strongips} {ircbot} {bruteforcelogin}
 Choix="all"
 
 #Fichier personnel facultatif listant des IP (1 par ligne) à bloquer
 Filtre_Perso="filtreperso.txt"
 
-# Pour trace facultative des IP non conformes au format IP
+# Pour trace facultative des IP non conformes au format IP v4 ou v6
 #Choix: {0}: sans trace, {1}: dans fichier log, {2}: dans fichier spécifique
 Trace_Ano=1
-File_Ano="anoip.txt" # à renseigner si option2 (sinon ne pas modifer)
+File_Ano="anoip.txt" # à renseigner si option2 (sinon ne pas supprimer)
 
-##################
+###############################################################################
+###############################################################################
 ### CONSTANTES ###
 ##################
 Version="v0.0.1"
@@ -40,7 +41,7 @@ filetemp1="/fichiertemp1"
 filetemp2="/fichiertemp2"
 marge=60
 
-#################
+###############################################################################
 ### FONCTIONS ###
 #################
 raz_ip_bloquees(){
@@ -48,9 +49,10 @@ sqlite3 $db <<EOL
 delete from AutoBlockIP where DENY = 1 and ExpireTime > 0;
 EOL
 }
+
 ###############################################################################
 tests_initiaux(){
-echo -e "\nDemarrage du script $0 version $Version: $(date)"
+echo -e "\nDemarrage du script `basename $0` $Version: $(date)"
 if [ -f  "/bin/bash" ]; then
     TypeShell="bash"
 elif [ -f  "/bin/sh" ]; then    
@@ -95,10 +97,8 @@ if [ -f  $File_Ano ]; then
     rm  $File_Ano
 fi
 if [[ $Trace_Ano == 2 ]]; then
-    echo -e "\nDemarrage du script (version $Version_Script):  $(date)" > \
-        $File_Ano
+    echo -e "\nDemarrage du script $Version: $(date)" > $File_Ano
 fi
-nb_invalide=0
 }
 
 ###############################################################################
@@ -115,13 +115,17 @@ for url in $Liste_Url; do
 	host=`echo $url | sed -n "s/^https\?:\/\/\([^/]\+\).*$/\1/p"`
 	case $host in
 		lists.blocklist.de)
-			wget -q "$url$Choix.txt" -O $tmp2
-			nb=$(wc -l $tmp2 | cut -d' ' -f1)
-			if [[ $nb -gt 0 ]];then
-			    sort -ufo $tmp1 $tmp2 $tmp1
-			 else
-                echo "Echec chargement IP depuis le site $host"
-            fi
+			nb=0
+			for chx in $Choix; do
+			    wget -q "$url$chx.txt" -O $tmp2
+			    nb2=$(wc -l $tmp2 | cut -d' ' -f1)
+			    if [[ $nb2 -gt 0 ]];then
+			        sort -ufo $tmp1 $tmp2 $tmp1
+			        nb=$(($nb+$nb2))
+			    else
+                    echo "Echec chargement IP depuis le site $host$choix.txt"
+                fi
+            done
 			;;
 	    mariushosting.com)
 		    if [[ $TypeShell == "bash" ]];then
@@ -168,12 +172,6 @@ nb_ligne=$(wc -l  $tmp1 | cut -d' ' -f1)
 }
 
 ###############################################################################
-deblocage_ip(){
-`sqlite3 $db \
-    "delete from AutoBlockIP where ExpireTime > 0 and ExpireTime < $start"`
-}
- 
-###############################################################################
 maj_ip_connues(){
 sqlite3 $db <<EOL
 drop table if exists Var;
@@ -187,11 +185,6 @@ create table Tmp (IP varchar(50) primary key);
 .import /tmp/autoblock_synology/fichiertemp1 Tmp
 alter table Tmp add column ExpireTime date;
 alter table Tmp add column Old boolean;
-EOL
-if [[ $TypeShell == "sh" ]];then
-    sleep 2 #(à ajuster)
-fi
-sqlite3 $db <<EOL
 update Tmp set ExpireTime = (select value from Var where name = 'stop');
 update Tmp set Old = (
 select 1 from AutoBlockIP where Tmp.IP = AutoBlockIP.IP);
@@ -207,7 +200,6 @@ rm $tmp1
 
 ###############################################################################
 tracer_ip_incorrecte(){
-((nb_invalide++))
 case $Trace_Ano in
     1)  echo "$nb_invalide:IP non traitée (format IP incorrect):  $ip"
         ;;
@@ -294,9 +286,6 @@ for ip in $newip; do
    maj_ipstd
 done
 if [ -f  $tmp1 ]; then
-    if [[ $TypeShell == "sh" ]];then
-        sleep 3 #(à ajuster)
-    fi 
     import_nouvelles_ip
     if [[ $TypeShell == "bash" ]];then
         insertion_nouvelles_ip_nas
@@ -308,20 +297,6 @@ fi
 }
 
 ###############################################################################
-informations(){
-maj=`sqlite3 $db "select count(*) from AutoBlockIP 
-    where RecordTime < $start and ExpireTime = $block_off"`
-ajt=`sqlite3 $db "select count(*) from AutoBlockIP where RecordTime = $start"`
-ko=$(($nb_ligne-$maj-$ajt))
-echo "$(($nb_ligne-$maj-$ajt)) erreur(s) durant le traitement des IP"
-if [[ $nb_invalide -gt 0 ]]; then
-    echo "$nb_invalide IP considérée(s) non valide(s)"
-fi
-duree=$((`date +%s`- $start))
-echo  -e "Fin du script exécuté en $(($duree/60))mn $(($duree%60))s"
-}
-
-##############
 ### SCRIPT ###
 ##############
 cd `dirname $0`
@@ -329,10 +304,8 @@ tests_initiaux $1
 plage_blocage
 raz_fil_ano 
 acquisition_ip
-#deblocage_ip
 maj_ip_connues
 insertion_nouvelles_ip 
-#informations
 echo  "Script terminé"
 exit 0
 ###############################################################################
