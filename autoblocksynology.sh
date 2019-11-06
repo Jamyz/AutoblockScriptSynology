@@ -2,7 +2,7 @@
 
 ###############################################################################
 ###############################################################################
-# Script du tutoriel de nas-forum.com par PPJP + Superthx pour test
+# Script du tutoriel de nas-forum.com par Superthx
 ###############################################################################
 # Ce script accepte un paramètre:  "raz"
 # S'il est présent:
@@ -20,6 +20,7 @@ https://mariushosting.com/wp-content/uploads/2018/07/deny-ip-list.txt"
 # Pour la liste de www.blocklist.de
 # Liste de choix: {all} {ssh} {mail} {apache} {imap} {ftp} {sip} {bots}
 #              {strongips} {ircbot} {bruteforcelogin}
+#Choix séparés par un espace, exemple  "ssh apache bruteforcelogin"
 Choix="all"
 
 #Fichier personnel facultatif listant des IP (1 par ligne) à bloquer
@@ -34,7 +35,7 @@ File_Ano="anoip.txt" # à renseigner si option2 (sinon ne pas supprimer)
 ###############################################################################
 ### CONSTANTES ###
 ##################
-Version="v0.0.1"
+Version="v0.0.2"
 db="/etc/synoautoblock.db"
 dirtmp="/tmp/autoblock_synology"
 filetemp1="/fichiertemp1"
@@ -168,7 +169,7 @@ for url in $Liste_Url; do
 	esac
 done
 rm $tmp2
-nb_ligne=$(wc -l  $tmp1 | cut -d' ' -f1)
+nb_ligne=$(wc -l  $tmp1 | cut -d' ' -f1)						
 }
 
 ###############################################################################
@@ -203,7 +204,7 @@ tracer_ip_incorrecte(){
 case $Trace_Ano in
     1)  echo "$nb_invalide:IP non traitée (format IP incorrect):  $ip"
         ;;
-    2)  echo "$nb_invalide : $ip" >> $File_Ano            
+    2)  echo "$nb_invalide : $ip" >> $File_Ano               
         ;;
     *) ;;
 esac
@@ -306,6 +307,6 @@ raz_fil_ano
 acquisition_ip
 maj_ip_connues
 insertion_nouvelles_ip 
-echo  "Script terminé"
+echo  "Script terminé"		   
 exit 0
 ###############################################################################
